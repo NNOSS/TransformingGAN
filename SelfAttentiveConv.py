@@ -9,13 +9,13 @@ from HelperFunctions import *
 #BASE_Y = 7
 IMAGE_SIZE = 28,28,1
 CONVOLUTIONS = [-32, -64, 128]
-TRANSFORMERS = [0, 1, 1]
+TRANSFORMERS = [0, 4, 4]
 HIDDEN_SIZE = 1000
 NUM_CLASSES = 10
 LEARNING_RATE = 2e-5
 MOMENTUM = .5
-BATCH_SIZE = 16
-TEST_BATCH_SIZE = 64
+BATCH_SIZE = 4
+TEST_BATCH_SIZE = 16
 FILEPATH = '/Data/FashionMNIST/'
 TRAIN_INPUT = FILEPATH + 'train-images-idx3-ubyte'
 TRAIN_LABEL = FILEPATH + 'train-labels-idx1-ubyte'
@@ -26,6 +26,7 @@ TEST_LABEL = FILEPATH + 't10k-labels-idx1-ubyte'
 PERM_MODEL_FILEPATH = '/Models/FashionAttention/SimpleModel.ckpt' #filepaths to model and summaries
 SUMMARY_FILEPATH ='/Models/FashionAttention/Summaries/'
 
+MODEL_TYPE = 2
 RESTORE = False
 WHEN_DISP = 10
 WHEN_TEST = 10
@@ -74,7 +75,10 @@ def create_discriminator(x_image, reuse = False):
         res = inputs
         for i,v in enumerate(CONVOLUTIONS):
             '''Similarly tile for constant reference to class'''
-            convVals = transformer_sota(convVals, TRANSFORMERS[i], v, i)
+            if MODEL_TYPE == 1:
+                convVals = transformer_sota(convVals, TRANSFORMERS[i], v, i)
+            elif MODEL_TYPE == 2:
+                convVals = transformer_wide(convVals, TRANSFORMERS[i], v, i)
 
             convVals = Conv2d(convVals,abs(v), (1, 1), act=tf.nn.leaky_relu,strides =(1,1),name='d_conv_0_%i'%(i))
             batch = BatchNormLayer(convVals, act=tf.nn.leaky_relu, is_train=True,name='d_bn_1_%i'%(i))
