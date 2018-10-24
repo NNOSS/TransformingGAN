@@ -3,7 +3,7 @@ import tensorflow as tf
 import numpy as np
 from tensorlayer.layers import *
 
-TRANSFORMER_REDUCE = 8
+TRANSFORMER_REDUCE = 32
 
 def transformer_sota(x, n_trans, v, i):
     '''Transformer Layer State Of The Art Method'''
@@ -22,28 +22,41 @@ def transformer_sota(x, n_trans, v, i):
         gconv = Conv2d(x, n_filt, (1, 1), strides =(1,1),name='g_%i'%(i))
         hconv = Conv2d(x, og_f, (1, 1), strides =(1,1),name='h_%i'%(i))
 
-        fflat = ReshapeLayer(fconv, [-1, og_h * og_w, n_filt], name='f_reshape_%i'%(i)).outputs
-        gflat = ReshapeLayer(gconv, [-1, og_h * og_w, n_filt], name='g_reshape_%i'%(i)).outputs
+        print("convs")
+        print(fconv.outputs.get_shape())
+        print(gconv.outputs.get_shape())
+        print(hconv.outputs.get_shape())
+
+
+        freshape = ReshapeLayer(fconv, [-1, og_h * og_w, n_filt], name='f_reshape_%i'%(i)).outputs
+        greshape = ReshapeLayer(gconv, [-1, og_h * og_w, n_filt], name='g_reshape_%i'%(i)).outputs
         hreshape = ReshapeLayer(hconv, [-1, og_h * og_w, og_f], name='h_reshape_%i'%(i)).outputs
 
-        #pre_map = tf.einsum('abc,ade->abd', fflat, gflat, name='pre_attention_%i'%(i)) #Replace with matmul (will require some transposing probably)
+        print("reshapes")
+        print(freshape.get_shape())
+        print(greshape.get_shape())
+        print(hreshape.get_shape())
 
-        pre_map = tf.matmul(fflat, tf.transpose(gflat, [0, 2, 1]), name='pre_attention_%i'%(i))
+        pre_map = tf.matmul(freshape, tf.transpose(greshape, [0, 2, 1]), name='pre_attention_%i'%(i))
         att_map = tf.nn.softmax(pre_map, axis=1, name='attention_%i'%(i))
 
-        #flat_focus = tf.einsum('abc,ade->adc', hreshape, att_map, name='flat_focus_%i'%(i)) #Replace with matmul (will require some transposing probably)
-        reshape_focus = tf.matmul(att_map, hreshape, name='pre_focus%i'%(i))
-        trans_focus = reshape_focus
-        #trans_focus = tf.transpose(reshape_focus, name='trans_attention_%i'%(i))
+        print("maps")
+        print(pre_map.get_shape())
+        print(att_map.get_shape())
 
+        unshaped_focus = tf.matmul(att_map, hreshape, name='pre_focus%i'%(i))
+        focus = tf.reshape(unshaped_focus, [-1, og_h, og_w, og_f])
+        out = InputLayer(focus + x.outputs, name = 'resnet_%i'%(i))
 
-        print(trans_focus.get_shape())
-        focus = tf.reshape(trans_focus, [-1, og_f, og_h, og_w])
-        focus = tf.transpose(focus, [0,2,3,1], name='focus_%i'%(i))
+        print("focuses")
+        print(unshaped_focus.get_shape())
         print(focus.get_shape())
-        focus = InputLayer(focus)
 
-    return focus
+
+
+        
+
+    return out
 
 
 def transformer_wide(x, n_trans, v, i):
@@ -67,10 +80,16 @@ def transformer_wide(x, n_trans, v, i):
         greshape = ReshapeLayer(gconv, [-1, og_h * og_w, n_filt, n_trans], name='g_reshape_%i'%(i)).outputs # Also try fully connected for generating the multiple maps?
         hreshape = ReshapeLayer(hconv, [-1, og_h * og_w, og_f, 1], name='h_reshape_%i'%(i)).outputs
 
+        print("reshapes")
+        print(freshape.get_shape())
+        print(greshape.get_shape())
+        print(hreshape.get_shape())
+
         fmult = tf.transpose(freshape, [0,3,1,2], name='fmult_%i'%(i))
         gmult = tf.transpose(greshape, [0,3,1,2], name='gmult_%i'%(i))
         hmult = tf.transpose(hreshape, [0,3,1,2], name='hmult_%i'%(i))
 
+        print("intermediate vectors")
         print(fmult.get_shape())
         print(gmult.get_shape())
         print(hmult.get_shape())
@@ -78,17 +97,16 @@ def transformer_wide(x, n_trans, v, i):
         pre_map = tf.matmul(fmult, tf.transpose(gflat, [0, 1, 3, 2]),name='pre_attention_%i'%(i))
         att_map = tf.nn.softmax(pre_map, axis=2, name='attention_%i'%(i))
 
+        print("maps")
         print(pre_map.get_shape())
         print(att_map.get_shape())
 
-        reshape_focus = tf.matmul(att_map, hmult,name='pre_attention_%i'%(i))
-        trans_focus = reshape_focus
-        #trans_focus = tf.transpose(reshape_focus, [0,2,1], name='trans_attention_%i'%(i))
+        unshaped_focus = tf.matmul(att_map, hmult, name='pre_focus%i'%(i))
+        #focus = tf.reshape(unshaped_focus, [-1, og_h, og_w, og_f])
+        #out = InputLayer(focus + x.outputs, name = 'resnet_%i'%(i))
 
-
-        print(trans_focus.get_shape())
-        focus = tf.reshape(trans_focus, [-1, og_h, og_w, og_f])
+        print("focuses")
+        print(unshaped_focus.get_shape())
         print(focus.get_shape())
-        focus = InputLayer(focus)
 
     return focus

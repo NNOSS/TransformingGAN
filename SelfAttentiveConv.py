@@ -15,7 +15,7 @@ NUM_CLASSES = 10
 LEARNING_RATE = 2e-5
 MOMENTUM = .5
 BATCH_SIZE = 16
-TEST_BATCH_SIZE = 32
+TEST_BATCH_SIZE = 64
 FILEPATH = '/Data/FashionMNIST/'
 TRAIN_INPUT = FILEPATH + 'train-images-idx3-ubyte'
 TRAIN_LABEL = FILEPATH + 'train-labels-idx1-ubyte'
@@ -27,10 +27,10 @@ PERM_MODEL_FILEPATH = '/Models/FashionAttention/SimpleModel.ckpt' #filepaths to 
 SUMMARY_FILEPATH ='/Models/FashionAttention/Summaries/'
 
 RESTORE = False
-WHEN_DISP = 100
-WHEN_TEST = 40
-NUM_OUTPUTS = 20
-WHEN_SAVE = 2000
+WHEN_DISP = 10
+WHEN_TEST = 10
+NUM_OUTPUTS = 3
+WHEN_SAVE = 200
 MAX_OUTPUTS = 16
 ITERATIONS = 1000000
 
@@ -117,9 +117,17 @@ def build_model(x, og_classes, reuse = False):
             scope.reuse_variables()
 
         real_input_summary = tf.summary.image("real_inputs", x,max_outputs = NUM_OUTPUTS)#show real image
+        #focus = focii[1]
+        #f_min = tf.reduce_min(focus, axis = [1,2], keepdims = True)
+        #f_max = tf.reduce_max(focus, axis = [1,2], keepdims = True)
+        #f_0_to_1 = (focus - f_min) / (f_max - f_min)
+        #f_0_to_255_uint8 = tf.image.convert_image_dtype (f_0_to_1, dtype=tf.uint8)
+        #first_focus_summary = tf.summary.image("first_focus", f_0_to_255_uint8, max_outputs = NUM_OUTPUTS)
+        
+        #first_resout_summary = tf.summary.image("first_resout", res_out[1], max_outputs = NUM_OUTPUTS)
         t_vars = tf.trainable_variables()
         d_vars = [var for var in t_vars if 'd_' in var.name] #find trainable discriminator variable
-        print(d_vars)
+        #print(d_vars)
         #en_vars = [var for var in t_vars if 'gen_' in var.name] #find trainable discriminator variable
         # print(gen_vars)
         print(y.get_shape())
@@ -135,7 +143,8 @@ def build_model(x, og_classes, reuse = False):
         else:
             train_step = None
         scalar_summary = tf.summary.merge([d_cross_entropy_summary, accuracy_summary_real])
-    return scalar_summary, real_input_summary, train_step
+        image_summary = tf.summary.merge([real_input_summary])#, first_focus_summary, first_resout_summary])
+    return scalar_summary, image_summary, train_step
 
 
 if __name__ == "__main__":
